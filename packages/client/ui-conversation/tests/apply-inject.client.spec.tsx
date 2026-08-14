@@ -336,7 +336,7 @@ describe('conversation slot inject API', () => {
 })
 
 describe('details inject API', () => {
-  it('details injects the one layout callback; selection rides the shared store instead', async () => {
+  it('details injects the layout close callback while selection rides the shared store', async () => {
     const b = await bench()
     const entry = b.entryOf('details')
     const injected = (entry.inject as unknown as () => DetailsInjected)()

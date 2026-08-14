@@ -83,6 +83,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
       hookContext: string
       inject: ChatNodeTurnDataInjected
     }
+    /** Optional question navigator rendered at the transcript's right edge. */
+    'conversation.chat.navigator': { kind: 'single'; scope: 'session'; owner: QuestionNavigatorOwnerProps }
     /**
      * The chat view's per-command row hole: keyed dispatch on the command
      * name (`command/run.name`; a run-less cross-window node has none and
@@ -350,6 +352,20 @@ export interface ChatNodeTurnDataInjected {
   hooks: {
     turnData: SlotHookFactory<'conversation.chat.node', UseChatNodeTurnData>
   }
+}
+
+/** Owner callback provided to the optional transcript question navigator. */
+export interface QuestionNavigatorOwnerProps {
+  /** Question Node nearest the current viewport reading position. */
+  activeQuestionKey: string | null
+  /** Whether earlier transcript pages remain outside the loaded window. */
+  hasMoreQuestions: boolean
+  /** Whether an earlier transcript page is currently loading. */
+  loadingMoreQuestions: boolean
+  /** Load the next earlier transcript page. */
+  loadMoreQuestions: () => void
+  /** Scroll the loaded transcript to one question Node. */
+  jumpToQuestion: (nodeKey: string) => void
 }
 
 /** Stable owner currency delivered to one keyed Chat business renderer. */
@@ -709,7 +725,7 @@ export interface ChatViewInjected {
 
 /** Full chat-view component props: runtime & its Tool/command/tail render shares & store & injected & locale seat. */
 export type ChatViewSlotProps =
-  PropsRuntime<'conversation.view'> & PropsRenderSlots<'conversation.chat.node'>
+  PropsRuntime<'conversation.view'> & PropsRenderSlots<'conversation.chat.node' | 'conversation.chat.navigator'>
   & PropsStore<ChatStore> & ChatViewInjected & PropsLocale<'conversation'>
 
 /**

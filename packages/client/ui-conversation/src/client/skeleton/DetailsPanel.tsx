@@ -74,7 +74,6 @@ export function DetailsPanel({ useSession, useSessions, sessionId, useStore, ren
   const material = useSession(
     s => (callId === undefined ? null : materialFor(s, callId)),
     (a, b) => shallowEqual(a, b))
-
   return (
     <div className={css.root}>
       <div className={css.header}>

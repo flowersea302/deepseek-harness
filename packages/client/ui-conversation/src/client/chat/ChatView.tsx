@@ -12,7 +12,7 @@
 // ChatNodeSeat subscribes to one Node key, so Assistant deltas and Tool
 // lifecycle updates replace only their own row without remounting it.
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ConversationTimelineSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
 import { IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ChatViewSlotProps } from '../contract/slots.ts'
@@ -144,8 +144,8 @@ function TurnStatus({ startTime, t }: {
  * ordered business Node crosses the keyed renderer seat.
  */
 export function ChatView({
-  useSession, useSessions, useStore, renderSlot, sessionId, openFile, loadOlder, loadImage, inspectCall, chatScroll, forkAt,
-  fileMentions, t,
+  useSession, useSessions, useStore, renderSlot, sessionId, openFile, loadOlder, loadImage, inspectCall, chatScroll,
+  forkAt, fileMentions, t,
 }: ChatViewSlotProps) {
   const order = useSession(s => s.chat.order)
   const nodeStore = useSession(s => s.chat.nodes)
@@ -165,11 +165,11 @@ export function ChatView({
     [inbox],
   )
   const runningTurnStart = useMemo(() => runningTurnStartTime(timeline), [timeline])
-
   const listRef = useRef<HTMLDivElement | null>(null)
   const columnRef = useRef<HTMLDivElement | null>(null)
   const atBottomRef = useRef(true)
   const [atBottom, setAtBottom] = useState(true)
+  const [activeQuestionKey, setActiveQuestionKey] = useState<string | null>(null)
   /** Last position delivered or written on the main thread. */
   const observedTopRef = useRef(0)
   /** Paging anchor: semantic row/position at click, updated by reader scrolls
@@ -261,12 +261,46 @@ export function ChatView({
     if (appendedUser || appendedSteering || (tipMoved && atBottomRef.current)) toBottom(el)
   })
 
+  const jumpToQuestion = useCallback((nodeKey: string): void => {
+    const local = listRef.current
+    if (local === null) return
+    const row = anchorElement(local, nodeKey)
+    if (row !== null) {
+      row.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      observedTopRef.current = scrollerOf(local).scrollTop
+    }
+  }, [])
+
+  const updateActiveQuestion = useCallback((local: HTMLElement): void => {
+    const scrollport = scrollerOf(local)
+    const viewport = scrollport.getBoundingClientRect()
+    const composer = scrollport.querySelector<HTMLElement>('[data-composer-seat]')
+    const visibleBottom = composer?.getBoundingClientRect().top ?? viewport.bottom
+    const midpoint = viewport.top + Math.max(0, visibleBottom - viewport.top) / 2
+    let current: string | null = null
+    for (const nodeKey of order) {
+      if (nodeStore.get(nodeKey)?.kind !== 'user') continue
+      const row = anchorElement(local, nodeKey)
+      if (row === null) continue
+      if (row.getBoundingClientRect().top <= midpoint) current = nodeKey
+      else if (current === null) current = nodeKey
+      else break
+    }
+    setActiveQuestionKey(previous => previous === current ? previous : current)
+  }, [nodeStore, order])
+
+  useLayoutEffect(() => {
+    const local = listRef.current
+    if (local !== null) updateActiveQuestion(local)
+  }, [updateActiveQuestion])
+
   const onScrollRef = useRef(() => {})
   onScrollRef.current = () => {
     const local = listRef.current
     /* v8 ignore next -- ref-null guard: the handler only fires while mounted. */
     if (local === null) return
     const el = scrollerOf(local)
+    updateActiveQuestion(local)
     // Only reader input may make raw scroll geometry change follow ownership:
     // a delivered position that deviates from the observed-top ledger (every
     // programmatic write records itself there synchronously). This covers
@@ -405,6 +439,13 @@ export function ChatView({
             <PendingSteeringBubble key={item.id} content={item.content} loadImage={loadImage} t={t} />
           ))}
         </div>
+        {renderSlot('conversation.chat.navigator', {
+          activeQuestionKey,
+          hasMoreQuestions: hasMore,
+          loadingMoreQuestions: loadingOlder,
+          loadMoreQuestions: loadOlder,
+          jumpToQuestion,
+        })}
         {!atBottom && (
           <div className={css.toBottomSlot}>
             <button
