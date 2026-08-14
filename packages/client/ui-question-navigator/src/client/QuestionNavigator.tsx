@@ -45,9 +45,8 @@ export function QuestionNavigator({
     if (activeQuestionKey === null) return
     const list = listRef.current
     const active = list?.querySelector<HTMLElement>('[aria-current="location"]')
-    if (active !== null && typeof active.scrollIntoView === 'function') {
-      active.scrollIntoView({ block: 'center' })
-    }
+    if (active === undefined || active === null || typeof active.scrollIntoView !== 'function') return
+    active.scrollIntoView({ block: 'center' })
   }, [activeQuestionKey, questions.length])
 
   if (questions.length === 0 && !hasMoreQuestions) return null
