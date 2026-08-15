@@ -2405,10 +2405,6 @@ importers:
         version: 18.3.7(@types/react@18.3.31)
 
   packages/client/ui-question-navigator:
-    dependencies:
-      clsx:
-        specifier: ^2.1.1
-        version: 2.1.1
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
